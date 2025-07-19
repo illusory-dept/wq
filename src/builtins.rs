@@ -529,7 +529,7 @@ pub fn rand(args: &[Value]) -> WqResult<Value> {
         }
 
         _ => Err(WqError::DomainError(
-            "rand expects 1 or 2 arguments".into(),
+            "rand expects one number or a list of two numbers".into(),
         )),
     }
 }
