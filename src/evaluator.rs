@@ -42,9 +42,9 @@ impl CallStack {
         self.frames.pop()
     }
 
-    // fn current_frame_mut(&mut self) -> Option<&mut StackFrame> {
-    //     self.frames.last_mut()
-    // }
+    fn current_frame_mut(&mut self) -> Option<&mut StackFrame> {
+        self.frames.last_mut()
+    }
 
     fn current_frame(&self) -> Option<&StackFrame> {
         self.frames.last()
@@ -165,7 +165,11 @@ impl Evaluator {
 
             AstNode::Assignment { name, value } => {
                 let val = self.eval(value)?;
-                self.environment.set(name.clone(), val.clone());
+                if let Some(frame) = self.call_stack.current_frame_mut() {
+                    frame.variables.insert(name.clone(), val.clone());
+                } else {
+                    self.environment.set(name.clone(), val.clone());
+                }
                 Ok(val)
             }
 
@@ -596,5 +600,40 @@ mod tests {
         assert_eq!(evaluator.eval_string("fib[4;]").unwrap(), Value::Int(3));
         assert_eq!(evaluator.eval_string("fib[5;]").unwrap(), Value::Int(5));
         assert_eq!(evaluator.eval_string("fib[6;]").unwrap(), Value::Int(8));
+    }
+
+    #[test]
+    fn test_assignment_inside_function() {
+        let mut evaluator = Evaluator::new();
+        evaluator.eval_string("add7:{k:7;x+k}").unwrap();
+        let result = evaluator.eval_string("add7[5;]").unwrap();
+        assert_eq!(result, Value::Int(12));
+
+        // variable k should not leak to global scope
+        let err = evaluator.eval_string("k");
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn test_prime_function() {
+        let mut evaluator = Evaluator::new();
+        evaluator
+            .eval_string(
+                "isprime:{[x;i]$[i*i>x;1;$[x%i=0;0;isprime[x;i+1;]]]}"
+            )
+            .unwrap();
+        evaluator.eval_string(
+            "primes:{[n]res:();iter:{[i]$[i>n;res;$[isprime[i;2;];res:res,i;0];iter[i+1;]]};iter[2;]}"
+        ).unwrap();
+        let result = evaluator.eval_string("primes[10;]").unwrap();
+        assert_eq!(
+            result,
+            Value::List(vec![
+                Value::Int(2),
+                Value::Int(3),
+                Value::Int(5),
+                Value::Int(7)
+            ])
+        );
     }
 }

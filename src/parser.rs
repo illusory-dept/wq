@@ -194,6 +194,35 @@ impl Parser {
         self.parse_comma()
     }
 
+    fn parse_block(&mut self) -> WqResult<AstNode> {
+        let mut statements = Vec::new();
+
+        while let Some(token) = self.current_token() {
+            match token.token_type {
+                TokenType::RightBrace => break,
+                TokenType::Semicolon | TokenType::Newline => {
+                    self.advance();
+                    continue;
+                }
+                TokenType::Eof => {
+                    return Err(WqError::SyntaxError(
+                        "Unexpected end of input in block".to_string(),
+                    ))
+                }
+                _ => {
+                    let stmt = self.parse_statement()?;
+                    statements.push(stmt);
+                }
+            }
+        }
+
+        if statements.len() == 1 {
+            Ok(statements.into_iter().next().unwrap())
+        } else {
+            Ok(AstNode::Block(statements))
+        }
+    }
+
     fn parse_comma(&mut self) -> WqResult<AstNode> {
         let mut items = Vec::new();
 
@@ -644,10 +673,8 @@ impl Parser {
             }
         }
 
-        // Parse function body
-        // let body = self.parse_expression()?;
-
-        let body = self.parse_statement()?;
+        // Parse function body allowing multiple statements
+        let body = self.parse_block()?;
 
         // Expect closing brace
         self.consume(TokenType::RightBrace)?;
@@ -747,6 +774,31 @@ mod tests {
                     left: Box::new(AstNode::Literal(Value::Int(2))),
                     operator: BinaryOperator::Multiply,
                     right: Box::new(AstNode::Literal(Value::Int(3))),
+                }),
+            }
+        );
+    }
+
+    #[test]
+    fn test_function_with_assignment_block() {
+        let ast = parse_string("f:{x:1;x+1}").unwrap();
+        assert_eq!(
+            ast,
+            AstNode::Assignment {
+                name: "f".into(),
+                value: Box::new(AstNode::Function {
+                    params: None,
+                    body: Box::new(AstNode::Block(vec![
+                        AstNode::Assignment {
+                            name: "x".into(),
+                            value: Box::new(AstNode::Literal(Value::Int(1))),
+                        },
+                        AstNode::BinaryOp {
+                            left: Box::new(AstNode::Variable("x".into())),
+                            operator: BinaryOperator::Add,
+                            right: Box::new(AstNode::Literal(Value::Int(1))),
+                        },
+                    ])),
                 }),
             }
         );

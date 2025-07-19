@@ -15,6 +15,9 @@ rlwrap cargo run
     g:{[a;b]a*b}       // explicit params
     g[5;6;]
 
+    //local variables inside functions
+    add7:{k:7;x+k}
+
     //single arg functions can be called w/o brackets
     signum 10
     signum(-10)
@@ -30,6 +33,10 @@ rlwrap cargo run
     fibtr:{[n;a;b]$[n=0;a;fibtr[n-1;b;a+b;]]}
     fib:{[n]fibtr[n;0;1;]}
     fib[10;]
+
+//primes using local variables:
+    isprime:{[x;i]$[i*i>x;1;$[x%i=0;0;isprime[x;i+1;]]]}
+    primes:{[n]res:();iter:{[i]$[i>n;res;$[isprime[i;2;];res:res,i;0];iter[i+1;]]};iter[2;]}
 
 //builtins:
     abs neg signum sqrt exp log floor ceiling
