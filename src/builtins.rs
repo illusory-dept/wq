@@ -1,5 +1,6 @@
 use crate::value::{Value, WqError, WqResult};
 use std::collections::HashMap;
+use rand::Rng;
 
 /// builtin functions
 pub struct Builtins {
@@ -25,6 +26,7 @@ impl Builtins {
         self.functions.insert("log".to_string(), log);
         self.functions.insert("floor".to_string(), floor);
         self.functions.insert("ceiling".to_string(), ceiling);
+        self.functions.insert("rand".to_string(), rand);
 
         // List functions
         self.functions.insert("count".to_string(), count);
@@ -477,6 +479,61 @@ fn range(args: &[Value]) -> WqResult<Value> {
         )),
     }
 }
+
+// helper function for rand
+fn to_f64(v: &Value) -> Option<f64> {
+    match v {
+        Value::Int(n)   => Some(*n as f64),
+        Value::Float(f) => Some(*f),
+        _               => None,
+    }
+}
+
+pub fn rand(args: &[Value]) -> WqResult<Value> {
+    let mut rng = rand::thread_rng();
+
+    let args: &[Value] = match args {
+        [Value::List(inner)] => inner,
+        other                => other,
+    };
+
+    match args {
+        [Value::Int(n)] if *n > 0 => {
+            Ok(Value::Int(rng.gen_range(0..*n)))
+        }
+        [Value::Float(f)] if *f > 0.0 => {
+            Ok(Value::Float(rng.gen_range(0.0..*f)))
+        }
+        [v] => Err(WqError::DomainError(format!(
+            "expected positive int or float, got {}",
+            v.type_name()
+        ))),
+
+        [Value::Int(a), Value::Int(b)] if a < b => {
+            Ok(Value::Int(rng.gen_range(*a..*b)))
+        }
+        [a, b] => {
+            let af = to_f64(a).ok_or_else(|| WqError::TypeError(
+                format!("expected numbers, got {}", a.type_name())
+            ))?;
+            let bf = to_f64(b).ok_or_else(|| WqError::TypeError(
+                format!("expected numbers, got {}", b.type_name())
+            ))?;
+            if af < bf {
+                Ok(Value::Float(rng.gen_range(af..bf)))
+            } else {
+                Err(WqError::DomainError(format!(
+                    "require a < b, got {} >= {}", af, bf
+                )))
+            }
+        }
+
+        _ => Err(WqError::DomainError(
+            "rand expects 1 or 2 arguments".into(),
+        )),
+    }
+}
+
 
 // Type functions
 fn type_of(args: &[Value]) -> WqResult<Value> {
