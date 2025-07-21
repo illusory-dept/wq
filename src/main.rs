@@ -5,6 +5,8 @@ use std::fs;
 use std::io::{self, Write};
 use std::time::Instant;
 
+use wq::value::box_mode::{is_boxed, set_boxed};
+
 use colored::Colorize;
 
 fn main() {
@@ -51,6 +53,16 @@ fn main() {
                     "clear" | "\\c" => {
                         evaluator.environment_mut().clear();
                         println!("Variables cleared");
+                        continue;
+                    }
+                    "box" | "\\b" => {
+                        if is_boxed() {
+                            println!("{}", format!("Display mode: default").cyan());
+                            set_boxed(false)
+                        } else {
+                            println!("{}", format!("Display mode: boxed").cyan());
+                            set_boxed(true)
+                        }
                         continue;
                     }
                     cmd if cmd.starts_with("debug") || cmd.starts_with("\\d") => {
@@ -155,8 +167,8 @@ fn show_help() {
         list l:(1;2.5);l[0]
         func f:{[x;n]t:x;N[n-1;t:t*x];t};f[2;3;]
                                      required ^
-        repl: \h  \v    \c    \l   \t   \d    \q
-              help vars clear load time debug quit"#
+        repl: \h  \v    \c    \l   \t   \d    \q   \b
+              help vars clear load time debug quit box"#
     );
 }
 
