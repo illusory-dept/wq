@@ -110,3 +110,10 @@ symbol x   // "2" -> `2
 io
 --
 echo[...]  // echo[1;2;3;4;]
+
+EDITOR SUPPORT
+==============
+
+Emacs  : ./editor/wq-mode.el
+Vim    : todo
+VSCode : todo
