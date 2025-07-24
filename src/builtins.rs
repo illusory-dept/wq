@@ -11,6 +11,7 @@ mod logical;
 mod math;
 mod system;
 mod typeb;
+mod plot;
 
 static TIL_CACHE: Lazy<Mutex<HashMap<i64, Value>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
@@ -112,6 +113,9 @@ impl Builtins {
         self.add("fwrite", io::fwrite);
         self.add("fclose", io::fclose);
         self.add("fsize", io::fsize);
+
+        // plot
+        self.add("asciiplot", plot::asciiplot);
     }
 
     pub fn call(&self, name: &str, args: &[Value]) -> WqResult<Value> {
