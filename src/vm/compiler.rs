@@ -1,6 +1,6 @@
 use super::instruction::Instruction;
 use crate::builtins::Builtins;
-use crate::parser::{AstNode, BinaryOperator};
+use crate::parser::{AstNode, BinaryOperator, UnaryOperator};
 use crate::value::valuei::{Value, WqError, WqResult};
 use indexmap::IndexMap;
 
@@ -37,6 +37,58 @@ fn has_ctrl(node: &AstNode) -> bool {
         } => has_ctrl(object) || has_ctrl(index) || has_ctrl(value),
         AstNode::Assignment { value, .. } => has_ctrl(value),
         _ => false,
+    }
+}
+
+fn const_eval(node: &AstNode) -> Option<Value> {
+    match node {
+        AstNode::Literal(v) => Some(v.clone()),
+        AstNode::UnaryOp { operator, operand } => {
+            let v = const_eval(operand)?;
+            match operator {
+                UnaryOperator::Negate => v.neg_value(),
+                UnaryOperator::Count => Some(Value::Int(v.len() as i64)),
+            }
+        }
+        AstNode::BinaryOp {
+            left,
+            operator,
+            right,
+        } => {
+            let lv = const_eval(left)?;
+            let rv = const_eval(right)?;
+            match operator {
+                BinaryOperator::Add => lv.add(&rv),
+                BinaryOperator::Subtract => lv.subtract(&rv),
+                BinaryOperator::Multiply => lv.multiply(&rv),
+                BinaryOperator::Power => lv.power(&rv),
+                BinaryOperator::Divide => lv.divide(&rv),
+                BinaryOperator::DivideDot => lv.divide_dot(&rv),
+                BinaryOperator::Modulo => lv.modulo(&rv),
+                BinaryOperator::ModuloDot => lv.modulo_dot(&rv),
+                BinaryOperator::Equal => Some(lv.equals(&rv)),
+                BinaryOperator::NotEqual => Some(lv.not_equals(&rv)),
+                BinaryOperator::LessThan => Some(lv.less_than(&rv)),
+                BinaryOperator::LessThanOrEqual => Some(lv.less_than_or_equal(&rv)),
+                BinaryOperator::GreaterThan => Some(lv.greater_than(&rv)),
+                BinaryOperator::GreaterThanOrEqual => Some(lv.greater_than_or_equal(&rv)),
+            }
+        }
+        AstNode::List(elements) => {
+            let mut vals = Vec::with_capacity(elements.len());
+            for elem in elements {
+                vals.push(const_eval(elem)?);
+            }
+            Some(Value::List(vals))
+        }
+        AstNode::Dict(pairs) => {
+            let mut map = IndexMap::new();
+            for (k, v) in pairs {
+                map.insert(k.clone(), const_eval(v)?);
+            }
+            Some(Value::Dict(map))
+        }
+        _ => None,
     }
 }
 
@@ -116,6 +168,10 @@ impl Compiler {
     }
 
     pub fn compile(&mut self, node: &AstNode) -> WqResult<()> {
+        if let Some(val) = const_eval(node) {
+            self.instructions.push(Instruction::LoadConst(val));
+            return Ok(());
+        }
         match node {
             AstNode::Postfix { .. } => unreachable!(),
             AstNode::Literal(v) => self.instructions.push(Instruction::LoadConst(v.clone())),
