@@ -16,6 +16,10 @@ pub enum Instruction {
     StoreLocal(u16),
     /// Store into a local slot and keep value on stack
     StoreLocalKeep(u16),
+    /// Increment the value in a local slot by 1
+    IncLocal(u16),
+    /// Decrement the value in a local slot by 1
+    DecLocal(u16),
     BinaryOp(BinaryOperator),
     UnaryOp(UnaryOperator),
     CallBuiltin(String, usize),

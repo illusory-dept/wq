@@ -474,6 +474,8 @@ impl Compiler {
             idx_global_pop: usize,
             lt_jifalse: usize,
             ll0_gt_jifalse: usize,
+            ll1_add_sl: usize,
+            ll1_sub_sl: usize,
         }
 
         fn fuse_once(code: &mut Vec<Instruction>, stats: &mut Stats) -> bool {
@@ -568,6 +570,50 @@ impl Compiler {
                         changed_any = true;
                         i += 4;
                         continue;
+                    }
+                }
+
+                // 4-op fusion: LL j; LC 1; Add/Subtract; SL j -> IncLocal/DecLocal
+                if i + 3 < n {
+                    if let (
+                        LoadLocal(slot1),
+                        LoadConst(Value::Int(1)),
+                        BinaryOp(BinaryOperator::Add),
+                        StoreLocal(slot2),
+                    ) = (&old[i], &old[i + 1], &old[i + 2], &old[i + 3])
+                    {
+                        if slot1 == slot2 {
+                            out.push(IncLocal(*slot1));
+                            origin.push(i);
+                            keep[i] = true;
+                            keep[i + 1] = false;
+                            keep[i + 2] = false;
+                            keep[i + 3] = false;
+                            stats.ll1_add_sl += 1;
+                            changed_any = true;
+                            i += 4;
+                            continue;
+                        }
+                    }
+                    if let (
+                        LoadLocal(slot1),
+                        LoadConst(Value::Int(1)),
+                        BinaryOp(BinaryOperator::Subtract),
+                        StoreLocal(slot2),
+                    ) = (&old[i], &old[i + 1], &old[i + 2], &old[i + 3])
+                    {
+                        if slot1 == slot2 {
+                            out.push(DecLocal(*slot1));
+                            origin.push(i);
+                            keep[i] = true;
+                            keep[i + 1] = false;
+                            keep[i + 2] = false;
+                            keep[i + 3] = false;
+                            stats.ll1_sub_sl += 1;
+                            changed_any = true;
+                            i += 4;
+                            continue;
+                        }
                     }
                 }
 

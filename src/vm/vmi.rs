@@ -221,6 +221,40 @@ impl Vm {
                         return Err(WqError::RuntimeError("No local frame".into()));
                     }
                 }
+                Instruction::IncLocal(i) => {
+                    if let Some(frame) = self.locals.last_mut() {
+                        if let Some(slot) = frame.get_mut(*i as usize) {
+                            let old = slot.clone();
+                            let new = match old.add(&Value::Int(1)) {
+                                Some(v) => v,
+                                None => return Err(classify_arith("add", &old, &Value::Int(1))),
+                            };
+                            *slot = new;
+                        } else {
+                            return Err(WqError::RuntimeError(format!("Invalid local slot {i}")));
+                        }
+                    } else {
+                        return Err(WqError::RuntimeError("No local frame".into()));
+                    }
+                }
+                Instruction::DecLocal(i) => {
+                    if let Some(frame) = self.locals.last_mut() {
+                        if let Some(slot) = frame.get_mut(*i as usize) {
+                            let old = slot.clone();
+                            let new = match old.subtract(&Value::Int(1)) {
+                                Some(v) => v,
+                                None => {
+                                    return Err(classify_arith("subtract", &old, &Value::Int(1)));
+                                }
+                            };
+                            *slot = new;
+                        } else {
+                            return Err(WqError::RuntimeError(format!("Invalid local slot {i}")));
+                        }
+                    } else {
+                        return Err(WqError::RuntimeError("No local frame".into()));
+                    }
+                }
                 Instruction::BinaryOp(op) => {
                     let right = self.stack.pop().ok_or_else(|| {
                         WqError::RuntimeError("Stack underflow: missing right operand".into())
