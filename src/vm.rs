@@ -321,4 +321,48 @@ mod tests {
         let res = eval.eval_string("take[2;(1;2;3;4)]").unwrap();
         assert_eq!(res, Value::IntList(vec![1, 2]));
     }
+
+    #[test]
+    fn constant_folding_literals() {
+        use crate::lexer::Lexer;
+        use crate::parser::Parser;
+        use crate::resolver::Resolver;
+        let src = "1+2";
+        let mut lexer = Lexer::new(src);
+        let tokens = lexer.tokenize().unwrap();
+        let mut parser = Parser::new(tokens, src.into());
+        let ast = parser.parse().unwrap();
+        let mut resolver = Resolver::new();
+        let ast = resolver.resolve(ast);
+        let mut compiler = Compiler::new();
+        compiler.compile(&ast).unwrap();
+        assert_eq!(
+            compiler.instructions,
+            vec![Instruction::LoadConst(Value::Int(3))]
+        );
+    }
+
+    #[test]
+    fn constant_folding_list_addition() {
+        use crate::lexer::Lexer;
+        use crate::parser::Parser;
+        use crate::resolver::Resolver;
+        let src = "(1;2;3)+(4;5;6)";
+        let mut lexer = Lexer::new(src);
+        let tokens = lexer.tokenize().unwrap();
+        let mut parser = Parser::new(tokens, src.into());
+        let ast = parser.parse().unwrap();
+        let mut resolver = Resolver::new();
+        let ast = resolver.resolve(ast);
+        let mut compiler = Compiler::new();
+        compiler.compile(&ast).unwrap();
+        assert_eq!(
+            compiler.instructions,
+            vec![Instruction::LoadConst(Value::List(vec![
+                Value::Int(5),
+                Value::Int(7),
+                Value::Int(9),
+            ]))]
+        );
+    }
 }
