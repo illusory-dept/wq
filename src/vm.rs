@@ -321,4 +321,26 @@ mod tests {
         let res = eval.eval_string("take[2;(1;2;3;4)]").unwrap();
         assert_eq!(res, Value::IntList(vec![1, 2]));
     }
+
+    #[test]
+    fn inc_local_fused_executes() {
+        let mut eval = VmEvaluator::new();
+        let res = eval.eval_string("f:{n:0;n:n+1;n};f[]").unwrap();
+        assert_eq!(res, Value::Int(1));
+        assert!(has_instruction(&eval.vm.instructions, |i| matches!(
+            i,
+            Instruction::IncLocal(_)
+        )));
+    }
+
+    #[test]
+    fn dec_local_fused_executes() {
+        let mut eval = VmEvaluator::new();
+        let res = eval.eval_string("f:{n:2;n:n-1;n};f[]").unwrap();
+        assert_eq!(res, Value::Int(1));
+        assert!(has_instruction(&eval.vm.instructions, |i| matches!(
+            i,
+            Instruction::DecLocal(_)
+        )));
+    }
 }
